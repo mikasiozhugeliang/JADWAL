@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jadwal & Alarm Pintar</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Inter & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col">
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                <i class="fa-solid fa-clock text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base leading-tight">Jadwal & Alarm</h1>
+                <p id="live-clock" class="text-xs text-slate-500 dark:text-slate-400 font-medium">Memuat waktu...</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <!-- Install Guide Button -->
+            <button onclick="openInstallModal()" class="px-3 py-1.5 text-xs font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center space-x-1.5 active:scale-95 transition">
+                <i class="fa-solid fa-download"></i>
+                <span class="hidden sm:inline">Cara Pasang APK</span>
+            </button>
+            <!-- Theme Toggle -->
+            <button onclick="toggleDarkMode()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition">
+                <i id="theme-icon" class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </header>
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-lg w-full mx-auto p-4 pb-24 overflow-y-auto space-y-5">
+        <!-- Active Alarm Alert Banner (Hidden by default) -->
+        <div id="alarm-banner" class="hidden bg-red-500 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-bounce">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">
+                    <i class="fa-solid fa-bell-ring"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg" id="alert-title">Waktunya Kegiatan!</h3>
+                    <p class="text-xs text-red-100" id="alert-desc">Alarm berdering sekarang.</p>
+                </div>
+            </div>
+            <button onclick="stopAlarm()" class="px-4 py-2 bg-white text-red-600 font-bold rounded-xl shadow active:scale-95 transition">
+                Matikan
+            </button>
+        </div>
+        <!-- Quick Stats & Filter -->
+        <div class="grid grid-cols-3 gap-3">
+            <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <span class="text-xs text-slate-400 block font-medium">Total</span>
+                <span id="stat-total" class="text-xl font-bold">0</span>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <span class="text-xs text-slate-400 block font-medium">Aktif</span>
+                <span id="stat-active" class="text-xl font-bold text-emerald-500">0</span>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <span class="text-xs text-slate-400 block font-medium">Selesai</span>
+                <span id="stat-done" class="text-xl font-bold text-slate-400">0</span>
+            </div>
+        </div>
+        <!-- Filter & Search Bar -->
+        <div class="flex space-x-2">
+            <div class="relative flex-1">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-search text-xs"></i>
+                </span>
+                <input type="text" id="search-input" oninput="renderSchedules()" placeholder="Cari kegiatan..." class="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+            </div>
+            <select id="filter-category" onchange="renderSchedules()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                <option value="all">Semua Kategori</option>
+                <option value="Kerja">Kerja</option>
+                <option value="Pribadi">Pribadi</option>
+                <option value="Belajar">Belajar</option>
+                <option value="Kesehatan">Kesehatan</option>
+                <option value="Lainnya">Lainnya</option>
+            </select>
+        </div>
+        <!-- Schedule List -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 class="font-bold text-sm tracking-wide text-slate-500 dark:text-slate-400 uppercase">Daftar Jadwal</h2>
+                <button onclick="clearCompleted()" class="text-xs text-red-500 hover:underline font-medium">Hapus Selesai</button>
+            </div>
+            <div id="schedule-list" class="space-y-2.5">
+                <!-- Javascript will inject schedule items here -->
+            </div>
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-12 px-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 text-2xl">
+                    <i class="fa-solid fa-calendar-xmark"></i>
+                </div>
+                <h3 class="font-semibold text-slate-700 dark:text-slate-200">Belum ada jadwal</h3>
+                <p class="text-xs text-slate-400 mt-1">Tekan tombol "+" di bawah untuk menambah jadwal baru dan alarm.</p>
+            </div>
+        </div>
+    </main>
+    <!-- Floating Add Button -->
+    <div class="fixed bottom-6 right-6 z-30">
+        <button onclick="openModal()" class="w-14 h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg shadow-emerald-500/40 flex items-center justify-center text-xl active:scale-90 transition">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+    </div>
+    <!-- Add/Edit Modal Form -->
+    <div id="schedule-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 id="modal-title" class="font-bold text-lg">Tambah Jadwal Baru</h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="schedule-form" onsubmit="saveSchedule(event)" class="space-y-4">
+                <input type="hidden" id="schedule-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Nama Kegiatan</label>
+                    <input type="text" id="input-name" required placeholder="Contoh: Rapat Tim / Minum Obat" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Tanggal</label>
+                        <input type="date" id="input-date" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Jam Alarm</label>
+                        <input type="time" id="input-time" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Kategori</label>
+                    <select id="input-category" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                        <option value="Kerja">Kerja</option>
+                        <option value="Pribadi">Pribadi</option>
+                        <option value="Belajar">Belajar</option>
+                        <option value="Kesehatan">Kesehatan</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="pt-2 flex space-x-3">
+                    <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-semibold rounded-xl text-sm transition">Batal</button>
+                    <button type="submit" class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl text-sm shadow-lg shadow-emerald-500/30 transition">Simpan Jadwal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- PWA / APK Install Guide Modal -->
+    <div id="install-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center space-x-2 text-emerald-500">
+                    <i class="fa-solid fa-mobile-screen-button text-xl"></i>
+                    <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100">Cara Install sebagai APK di HP</h3>
+                </div>
+                <button onclick="closeInstallModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                <p>Aplikasi ini dapat diinstal langsung ke HP Android Anda layaknya aplikasi asli (APK) tanpa perlu mengunduh dari Play Store:</p>
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl space-y-2 border border-slate-200 dark:border-slate-700">
+                    <div class="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center space-x-2">
+                        <i class="fa-brands fa-chrome"></i>
+                        <span>Pengguna Android (Google Chrome):</span>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1 text-xs pl-1">
+                        <li>Buka halaman web aplikasi ini di browser Chrome HP Anda.</li>
+                        <li>Tekan tombol menu titik tiga (<i class="fa-solid fa-ellipsis-vertical"></i>) di pojok kanan atas browser.</li>
+                        <li>Pilih opsi <strong>"Tambahkan ke Layar Utama"</strong> atau <strong>"Install Aplikasi"</strong>.</li>
+                        <li>Konfirmasi dengan menekan <strong>Install</strong>. Ikon aplikasi akan otomatis muncul di menu utama HP Anda!</li>
+                    </ol>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl space-y-2 border border-slate-200 dark:border-slate-700">
+                    <div class="font-semibold text-blue-600 dark:text-blue-400 flex items-center space-x-2">
+                        <i class="fa-brands fa-apple"></i>
+                        <span>Pengguna iPhone (Safari):</span>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1 text-xs pl-1">
+                        <li>Buka halaman ini lewat browser Safari.</li>
+                        <li>Ketuk ikon Bagikan (Share <i class="fa-solid fa-arrow-up-from-bracket"></i>) di bagian bawah.</li>
+                        <li>Pilih <strong>"Tambahkan ke Layar Utama" (Add to Home Screen)</strong>.</li>
+                    </ol>
+                </div>
+                <div class="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs flex items-start space-x-2">
+                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                    <span><strong>Tips Alarm:</strong> Pastikan izin suara diizinkan dan mode hening (silent) HP dimatikan agar alarm berbunyi tepat waktu!</span>
+                </div>
+            </div>
+            <button onclick="closeInstallModal()" class="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-semibold rounded-xl text-sm transition">Mengerti</button>
+        </div>
+    </div>
+    <!-- Notification Toast / Box -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl text-xs font-medium opacity-0 pointer-events-none transition-opacity duration-300 flex items-center space-x-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">Berhasil disimpan</span>
+    </div>
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State Management
+        let schedules = JSON.parse(localStorage.getItem('smart_schedules')) || [];
+        let activeAlarmItem = null;
+        let audioCtx = null;
+        let alarmIntervalId = null;
+        // Init App on Load
+        window.onload = function() {
+            // Set default date to today in modal
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('input-date').value = todayStr;
+            // Load theme
+            if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+            }
+            renderSchedules();
+            setInterval(updateClockAndAlarms, 1000);
+            // Request browser notification permission
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+        };
+        // Dark Mode Toggle
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                icon.className = 'fa-solid fa-moon';
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                icon.className = 'fa-solid fa-sun';
+            }
+        }
+        // Clock & Alarm Checker Engine
+        function updateClockAndAlarms() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateString = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('live-clock').innerText = `${dateString} • ${timeString}`;
+            // Check alarms
+            const currentDateStr = now.toISOString().split('T')[0];
+            const currentHourMin = now.toTimeString().slice(0, 5); // HH:MM
+            schedules.forEach(item => {
+                if (!item.completed && item.date === currentDateStr && item.time === currentHourMin && !item.triggeredToday) {
+                    triggerAlarm(item);
+                    item.triggeredToday = true;
+                    saveData();
+                }
+            });
+        }
+        // Web Audio API Alarm Generator (No external files)
+        function startAlarmSound() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            // Play continuous beeping loop
+            playBeep();
+            alarmIntervalId = setInterval(playBeep, 800);
+        }
+        function playBeep() {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+        function stopAlarmSound() {
+            if (alarmIntervalId) {
+                clearInterval(alarmIntervalId);
+                alarmIntervalId = null;
+            }
+        }
+        // Trigger Alarm Alert & Notification
+        function triggerAlarm(item) {
+            activeAlarmItem = item;
+            document.getElementById('alert-title').innerText = item.name;
+            document.getElementById('alert-desc').innerText = `Kategori: ${item.category} | Pukul ${item.time}`;
+            document.getElementById('alarm-banner').classList.remove('hidden');
+            startAlarmSound();
+            // Browser Notification
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("⏰ Alarm Jadwal Berdering!", {
+                    body: `${item.name} (${item.category}) pukul ${item.time}`,
+                    icon: "https://placehold.co/192x192/22c55e/ffffff?text=Alarm"
+                });
+            }
+        }
+        function stopAlarm() {
+            stopAlarmSound();
+            document.getElementById('alarm-banner').classList.add('hidden');
+            if (activeAlarmItem) {
+                // Mark completed or reset trigger
+                activeAlarmItem = null;
+            }
+        }
+        // Modal Controls
+        function openModal(id = null) {
+            const modal = document.getElementById('schedule-modal');
+            modal.classList.remove('hidden');
+            if (id) {
+                document.getElementById('modal-title').innerText = 'Edit Jadwal';
+                const item = schedules.find(s => s.id === id);
+                if (item) {
+                    document.getElementById('schedule-id').value = item.id;
+                    document.getElementById('input-name').value = item.name;
+                    document.getElementById('input-date').value = item.date;
+                    document.getElementById('input-time').value = item.time;
+                    document.getElementById('input-category').value = item.category;
+                }
+            } else {
+                document.getElementById('modal-title').innerText = 'Tambah Jadwal Baru';
+                document.getElementById('schedule-form').reset();
+                document.getElementById('schedule-id').value = '';
+                document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+            }
+        }
+        function closeModal() {
+            document.getElementById('schedule-modal').classList.add('hidden');
+        }
+        function openInstallModal() {
+            document.getElementById('install-modal').classList.remove('hidden');
+        }
+        function closeInstallModal() {
+            document.getElementById('install-modal').classList.add('hidden');
+        }
+        // CRUD Operations
+        function saveSchedule(e) {
+            e.preventDefault();
+            const id = document.getElementById('schedule-id').value;
+            const name = document.getElementById('input-name').value;
+            const date = document.getElementById('input-date').value;
+            const time = document.getElementById('input-time').value;
+            const category = document.getElementById('input-category').value;
+            if (id) {
+                // Edit existing
+                schedules = schedules.map(s => s.id == id ? { ...s, name, date, time, category } : s);
+                showToast('Jadwal berhasil diperbarui');
+            } else {
+                // Add new
+                const newItem = {
+                    id: Date.now(),
+                    name,
+                    date,
+                    time,
+                    category,
+                    completed: false,
+                    triggeredToday: false
+                };
+                schedules.push(newItem);
+                showToast('Jadwal baru berhasil ditambahkan');
+            }
+            saveData();
+            closeModal();
+            renderSchedules();
+        }
+        function toggleComplete(id) {
+            schedules = schedules.map(s => s.id === id ? { ...s, completed: !s.completed } : s);
+            saveData();
+            renderSchedules();
+        }
+        function deleteSchedule(id) {
+            if (confirm('Hapus jadwal ini?')) {
+                schedules = schedules.filter(s => s.id !== id);
+                saveData();
+                renderSchedules();
+                showToast('Jadwal dihapus');
+            }
+        }
+        function clearCompleted() {
+            schedules = schedules.filter(s => !s.completed);
+            saveData();
+            renderSchedules();
+            showToast('Jadwal selesai dibersihkan');
+        }
+        function saveData() {
+            localStorage.setItem('smart_schedules', JSON.stringify(schedules));
+        }
+        // Render List & Stats
+        function renderSchedules() {
+            const listEl = document.getElementById('schedule-list');
+            const emptyEl = document.getElementById('empty-state');
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            const filterCat = document.getElementById('filter-category').value;
+            // Filter logic
+            let filtered = schedules.filter(s => {
+                const matchSearch = s.name.toLowerCase().includes(searchVal);
+                const matchCat = filterCat === 'all' || s.category === filterCat;
+                return matchSearch && matchCat;
+            });
+            // Sort by Date & Time asc
+            filtered.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+            // Update Stats
+            document.getElementById('stat-total').innerText = schedules.length;
+            document.getElementById('stat-active').innerText = schedules.filter(s => !s.completed).length;
+            document.getElementById('stat-done').innerText = schedules.filter(s => s.completed).length;
+            if (filtered.length === 0) {
+                listEl.innerHTML = '';
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+            let html = '';
+            const categoryColors = {
+                'Kerja': 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                'Pribadi': 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+                'Belajar': 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+                'Kesehatan': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+                'Lainnya': 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+            };
+            filtered.forEach(item => {
+                const catStyle = categoryColors[item.category] || categoryColors['Lainnya'];
+                const formattedDate = new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                html += `
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between space-x-3 transition hover:border-emerald-500/50">
+                        <div class="flex items-center space-x-3.5 overflow-hidden">
+                            <button onclick="toggleComplete(${item.id})" class="w-6 h-6 rounded-full border-2 ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600'} flex items-center justify-center flex-shrink-0 transition">
+                                ${item.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </button>
+                            <div class="overflow-hidden">
+                                <h4 class="font-semibold text-sm truncate ${item.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}">${escapeHtml(item.name)}</h4>
+                                <div class="flex items-center space-x-2 mt-1 text-xs text-slate-400">
+                                    <span><i class="fa-regular fa-calendar mr-1"></i>${formattedDate}</span>
+                                    <span>•</span>
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400"><i class="fa-regular fa-clock mr-1"></i>${item.time}</span>
+                                    <span class="px-2 py-0.5 rounded-md border text-[10px] font-medium ${catStyle}">${item.category}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                            <button onclick="openModal(${item.id})" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteSchedule(${item.id})" class="w-8 h-8 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center transition">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+        }
+        // Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 2500);
+        }
+        function escapeHtml(text) {
+            const map = { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>
